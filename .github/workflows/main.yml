@@ -2,7 +2,7 @@ name: Build Forge APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
   workflow_dispatch:
 
 jobs:
