@@ -29,6 +29,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Patch flutter_inappwebview_android compileSdk to 34
+        run: |
+          find ~/.pub-cache -path "*/flutter_inappwebview_android*/android/build.gradle" | while read f; do
+            sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 34/g' "$f"
+            sed -i 's/compileSdk [0-9]*/compileSdk 34/g' "$f"
+            echo "Patched: $f"
+          done
+
       - name: Build APK
         run: flutter build apk --release
 
