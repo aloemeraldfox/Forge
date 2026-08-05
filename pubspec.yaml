@@ -8,23 +8,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # WebView — renders HTML, JSX (pre-bundled), anything Chrome can run
   flutter_inappwebview: ^6.0.0
-
-  # File picker — load any file from storage
   file_picker: ^8.0.0
-
-  # Read file contents
   path_provider: ^2.0.0
-
-  # Home screen shortcut (feels like installed app)
-  flutter_home_screen_shortcuts: ^0.0.4
-
-  # Persist loaded apps across sessions
   shared_preferences: ^2.0.0
-
-  # Share/export the APK shell (future)
   share_plus: ^9.0.0
 
 dev_dependencies:
