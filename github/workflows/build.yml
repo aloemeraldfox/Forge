@@ -3,7 +3,7 @@ name: Build Forge APK
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # also lets you trigger manually from GitHub mobile
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,16 +26,25 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Create Flutter project scaffold
+        run: flutter create --org com.alo --project-name forge --platforms android .tmp_forge
+
+      - name: Overlay our files
+        run: |
+          cp lib/main.dart .tmp_forge/lib/main.dart
+          cp pubspec.yaml .tmp_forge/pubspec.yaml
+
       - name: Install dependencies
+        working-directory: .tmp_forge
         run: flutter pub get
 
       - name: Build APK
+        working-directory: .tmp_forge
         run: flutter build apk --release --no-shrink
 
-      # Upload APK so you can download it straight from GitHub mobile
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Forge-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: .tmp_forge/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
