@@ -1,40 +1,22 @@
-name: Build Forge APK
+name: forge
+description: Load any HTML/JSX/web file and run it as a native app.
+version: 1.0.0+1
 
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+environment:
+  sdk: ">=3.0.0 <4.0.0"
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_inappwebview: ^6.0.0
+  file_picker: ^8.0.0
+  path_provider: ^2.0.0
+  shared_preferences: ^2.0.0
+  share_plus: ^9.0.0
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.0'
-          channel: stable
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release --no-shrink
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Forge-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
+flutter:
+  uses-material-design: true
