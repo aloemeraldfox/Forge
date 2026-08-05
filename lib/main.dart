@@ -24,7 +24,6 @@ const _bg       = Color(0xFF06080D);
 const _surface  = Color(0xFF0C1018);
 const _border   = Color(0xFF16202E);
 const _lotus    = Color(0xFFC084F5);
-const _cyan     = Color(0xFF00E5FF);
 const _muted    = Color(0xFF3A4A5E);
 const _text     = Color(0xFFB8CADE);
 
@@ -53,8 +52,8 @@ class ForgeApp extends StatelessWidget {
 
 class LoadedApp {
   final String name;
-  final String path;       // local file path
-  final String type;       // html | jsx | vue | js
+  final String path;
+  final String type;
   final DateTime loadedAt;
 
   LoadedApp({
@@ -78,6 +77,69 @@ class LoadedApp {
     loadedAt: DateTime.parse(j['loadedAt']),
   );
 }
+
+// ── Built-in library definitions ───────────────────────────────────────────
+
+class BuiltinDef {
+  final String name;
+  final String assetPath;
+  final String componentName;
+  final Color color;
+  final String glyph;
+
+  const BuiltinDef({
+    required this.name,
+    required this.assetPath,
+    required this.componentName,
+    required this.color,
+    required this.glyph,
+  });
+}
+
+const _builtins = [
+  BuiltinDef(
+    name: 'Egyptian',
+    assetPath: 'assets/builtin/egyptianlibrary.jsx',
+    componentName: 'EgyptianLibrary',
+    color: Color(0xFFC8A040),
+    glyph: '𓇯',
+  ),
+  BuiltinDef(
+    name: 'Greek',
+    assetPath: 'assets/builtin/greeklibrary.jsx',
+    componentName: 'GreekLibrary',
+    color: Color(0xFFC084F5),
+    glyph: 'Θ',
+  ),
+  BuiltinDef(
+    name: 'Norse',
+    assetPath: 'assets/builtin/norselibrary.jsx',
+    componentName: 'NorseLibrary',
+    color: Color(0xFF7090C0),
+    glyph: 'ᚱ',
+  ),
+  BuiltinDef(
+    name: 'Celtic',
+    assetPath: 'assets/builtin/celticlibrary.jsx',
+    componentName: 'CelticLibrary',
+    color: Color(0xFF7AB87A),
+    glyph: 'ᚌ',
+  ),
+  BuiltinDef(
+    name: 'Japanese',
+    assetPath: 'assets/builtin/japaneselibrary.jsx',
+    componentName: 'JapaneseLibrary',
+    color: Color(0xFF4A7A9B),
+    glyph: '神',
+  ),
+  BuiltinDef(
+    name: 'Arcana',
+    assetPath: 'assets/builtin/magicresearch.jsx',
+    componentName: 'MagicResearch',
+    color: Color(0xFFC8A96E),
+    glyph: '⟡',
+  ),
+];
 
 // ── Home screen ────────────────────────────────────────────────────────────
 
@@ -106,7 +168,7 @@ class _ForgeHomeState extends State<ForgeHome> {
     setState(() {
       _apps = raw
         .map((s) => LoadedApp.fromJson(jsonDecode(s)))
-        .where((a) => File(a.path).existsSync()) // prune deleted files
+        .where((a) => File(a.path).existsSync())
         .toList();
     });
   }
@@ -140,16 +202,14 @@ class _ForgeHomeState extends State<ForgeHome> {
       final srcPath = file.path!;
       final ext = file.extension?.toLowerCase() ?? 'html';
 
-      // Copy to app documents dir so it persists even if original moves
       final docsDir = await getApplicationDocumentsDirectory();
       final destDir = Directory('${docsDir.path}/forge_apps');
       await destDir.create(recursive: true);
       final destPath = '${destDir.path}/${file.name}';
       await File(srcPath).copy(destPath);
 
-      // If JSX/TSX/Vue — wrap in a runtime that handles it
       final finalPath = (ext == 'jsx' || ext == 'tsx')
-          ? await _wrapJsx(destPath, file.name)
+          ? await _wrapJsx(destPath, file.name, null)
           : (ext == 'vue' || ext == 'svelte')
               ? await _wrapVue(destPath, file.name)
               : destPath;
@@ -162,7 +222,7 @@ class _ForgeHomeState extends State<ForgeHome> {
       );
 
       setState(() {
-        _apps.removeWhere((a) => a.name == app.name); // replace if exists
+        _apps.removeWhere((a) => a.name == app.name);
         _apps.insert(0, app);
         _loading = false;
       });
@@ -176,44 +236,105 @@ class _ForgeHomeState extends State<ForgeHome> {
     }
   }
 
-  // ── JSX wrapper — injects Babel standalone so JSX runs in WebView ─────────
+  // ── Open a built-in library app ───────────────────────────────────────────
 
-  Future<String> _wrapJsx(String srcPath, String fileName) async {
-    final src = await File(srcPath).readAsString();
-    final docsDir = await getApplicationDocumentsDirectory();
-    final wrapped = '''<!DOCTYPE html>
+  Future<void> _openBuiltin(BuiltinDef def) async {
+    setState(() => _loading = true);
+    try {
+      final src = await rootBundle.loadString(def.assetPath);
+
+      // Strip 'export default' so the function becomes a global in Babel context
+      final cleaned = src.replaceFirst(
+        'export default function ${def.componentName}',
+        'function ${def.componentName}',
+      );
+
+      final html = _buildBuiltinHtml(cleaned, def.componentName);
+
+      final dir = await getApplicationDocumentsDirectory();
+      final cacheDir = Directory('${dir.path}/forge_builtins');
+      await cacheDir.create(recursive: true);
+      final path = '${cacheDir.path}/${def.componentName}.html';
+      await File(path).writeAsString(html);
+
+      setState(() => _loading = false);
+
+      _openApp(LoadedApp(
+        name: def.name,
+        path: path,
+        type: 'builtin',
+        loadedAt: DateTime.now(),
+      ));
+    } catch (e) {
+      setState(() => _loading = false);
+      _showError('Could not open ${def.name}: $e');
+    }
+  }
+
+  String _buildBuiltinHtml(String jsxSrc, String componentName) {
+    return '''<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #06080d; color: #b8cade; font-family: monospace; }
-</style>
+<script>
+// window.storage backed by localStorage for apps that use it
+window.storage = {
+  get: function(key) {
+    var v = localStorage.getItem(key);
+    return Promise.resolve(v != null ? { value: v } : null);
+  },
+  set: function(key, value) {
+    localStorage.setItem(key, value);
+    return Promise.resolve();
+  }
+};
+</script>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-$src
+$jsxSrc
 
-// Auto-mount if component named App exists
-if (typeof App !== 'undefined') {
-  const root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(<App />);
-}
+const _mountRoot = ReactDOM.createRoot(document.getElementById('root'));
+_mountRoot.render(<$componentName />);
 </script>
 </body>
 </html>''';
+  }
+
+  // ── JSX wrapper ───────────────────────────────────────────────────────────
+
+  Future<String> _wrapJsx(String srcPath, String fileName, String? componentName) async {
+    final src = await File(srcPath).readAsString();
+    final docsDir = await getApplicationDocumentsDirectory();
+
+    // Detect component name from export default if not provided
+    String mountComponent = componentName ?? 'App';
+    if (componentName == null) {
+      final match = RegExp(r'export default function (\w+)').firstMatch(src);
+      if (match != null) {
+        mountComponent = match.group(1)!;
+      }
+    }
+
+    // Strip export default so it becomes a global
+    final cleaned = src.replaceFirst(
+      RegExp(r'export default function (\w+)'),
+      'function $mountComponent',
+    );
+
+    final wrapped = _buildBuiltinHtml(cleaned, mountComponent);
 
     final wrappedPath = '${docsDir.path}/forge_apps/${fileName}_wrapped.html';
     await File(wrappedPath).writeAsString(wrapped);
     return wrappedPath;
   }
 
-  // ── Vue/Svelte wrapper — CDN runtime ──────────────────────────────────────
+  // ── Vue/Svelte wrapper ────────────────────────────────────────────────────
 
   Future<String> _wrapVue(String srcPath, String fileName) async {
     final src = await File(srcPath).readAsString();
@@ -247,9 +368,7 @@ $src
   void _openApp(LoadedApp app) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ForgeViewer(app: app),
-      ),
+      MaterialPageRoute(builder: (_) => ForgeViewer(app: app)),
     );
   }
 
@@ -321,9 +440,7 @@ $src
                     child: _loading
                       ? const SizedBox(
                           width: 18, height: 18,
-                          child: CircularProgressIndicator(
-                            color: _lotus, strokeWidth: 2,
-                          ),
+                          child: CircularProgressIndicator(color: _lotus, strokeWidth: 2),
                         )
                       : const Text(
                           '+ LOAD FILE',
@@ -339,9 +456,8 @@ $src
               ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
-            // ── Supported types label
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24),
               child: Text(
@@ -350,40 +466,101 @@ $src
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
-            // ── Apps list
-            if (_apps.isEmpty)
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text('🌑', style: TextStyle(fontSize: 36)),
-                      SizedBox(height: 12),
-                      Text('NO APPS LOADED',
-                        style: TextStyle(color: _muted, fontSize: 11, letterSpacing: 3),
-                      ),
-                    ],
+            // ── Built-in library grid
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+
+                  const Text(
+                    'LIBRARY',
+                    style: TextStyle(color: _muted, fontSize: 9, letterSpacing: 3),
                   ),
-                ),
-              )
-            else
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  itemCount: _apps.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) {
-                    final app = _apps[i];
-                    return _AppCard(
-                      app: app,
-                      onTap: () => _openApp(app),
-                      onDelete: () => _deleteApp(app),
-                    );
-                  },
-                ),
+                  const SizedBox(height: 10),
+
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 1.65,
+                    children: _builtins.map((def) => _BuiltinCard(
+                      def: def,
+                      onTap: _loading ? null : () => _openBuiltin(def),
+                    )).toList(),
+                  ),
+
+                  if (_apps.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    const Text(
+                      'LOADED',
+                      style: TextStyle(color: _muted, fontSize: 9, letterSpacing: 3),
+                    ),
+                    const SizedBox(height: 10),
+                    ...List.generate(_apps.length, (i) {
+                      final app = _apps[i];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _AppCard(
+                          app: app,
+                          onTap: () => _openApp(app),
+                          onDelete: () => _deleteApp(app),
+                        ),
+                      );
+                    }),
+                  ],
+
+                  const SizedBox(height: 20),
+                ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Built-in card ──────────────────────────────────────────────────────────
+
+class _BuiltinCard extends StatelessWidget {
+  final BuiltinDef def;
+  final VoidCallback? onTap;
+
+  const _BuiltinCard({required this.def, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: def.color.withOpacity(0.06),
+          border: Border.all(color: def.color.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(def.glyph,
+              style: TextStyle(
+                fontSize: 20,
+                color: def.color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(def.name.toUpperCase(),
+              style: TextStyle(
+                color: def.color.withOpacity(0.85),
+                fontSize: 8,
+                letterSpacing: 1.5,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -402,7 +579,7 @@ class _AppCard extends StatelessWidget {
 
   String get _icon {
     switch (app.type) {
-      case 'jsx': case 'tsx': return '⚛';
+      case 'jsx': case 'tsx': case 'builtin': return '⚛';
       case 'vue': return '💚';
       case 'svelte': return '🧡';
       default: return '🌐';
@@ -507,7 +684,6 @@ class _ForgeViewerState extends State<ForgeViewer> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Reload
                   GestureDetector(
                     onTap: () => _webCtrl?.reload(),
                     child: const Text('↺',
@@ -530,14 +706,12 @@ class _ForgeViewerState extends State<ForgeViewer> {
                       allowUniversalAccessFromFileURLs: true,
                       mediaPlaybackRequiresUserGesture: false,
                       allowsInlineMediaPlayback: true,
-                      // localStorage persists between sessions
                       databaseEnabled: true,
                       domStorageEnabled: true,
                     ),
                     onWebViewCreated: (ctrl) => _webCtrl = ctrl,
                     onLoadStop: (_, __) => setState(() => _loading = false),
                     onPermissionRequest: (_, request) async {
-                      // Auto-grant mic + camera inside Forge
                       return PermissionResponse(
                         resources: request.resources,
                         action: PermissionResponseAction.GRANT,

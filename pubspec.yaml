@@ -21,3 +21,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/builtin/egyptianlibrary.jsx
+    - assets/builtin/greeklibrary.jsx
+    - assets/builtin/norselibrary.jsx
+    - assets/builtin/celticlibrary.jsx
+    - assets/builtin/japaneselibrary.jsx
+    - assets/builtin/magicresearch.jsx
