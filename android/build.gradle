@@ -13,6 +13,17 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// flutter_inappwebview_android ships with compileSdk 33 but Flutter 3.22's
+// FlutterActivity references android.window.BackEvent (API 34). Force 34 on
+// all plugin library modules so R8 can resolve the class.
+subprojects {
+    afterEvaluate { proj ->
+        if (proj.hasProperty('android')) {
+            proj.android.compileSdkVersion 34
+        }
+    }
+}
+
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
