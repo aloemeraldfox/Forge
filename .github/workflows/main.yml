@@ -2,7 +2,7 @@ name: Build Forge APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
   workflow_dispatch:
 
 jobs:
@@ -29,8 +29,21 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Write android/local.properties
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_HOME" >> android/local.properties
+
+      - name: Patch flutter_inappwebview_android compileSdk to 34
+        run: |
+          find ~/.pub-cache -path "*/flutter_inappwebview_android*/android/build.gradle" | while read f; do
+            sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 34/g' "$f"
+            sed -i 's/compileSdk [0-9]*/compileSdk 34/g' "$f"
+            echo "Patched: $f"
+          done
+
       - name: Build APK
-        run: flutter build apk --release --no-shrink
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

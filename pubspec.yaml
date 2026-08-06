@@ -1,4 +1,4 @@
-name: forge
+name: lotus
 description: Load any HTML/JSX/web file and run it as a native app.
 version: 1.0.0+1
 
@@ -13,6 +13,7 @@ dependencies:
   path_provider: ^2.0.0
   shared_preferences: ^2.0.0
   share_plus: ^9.0.0
+  permission_handler: ^11.0.0
 
 dev_dependencies:
   flutter_test:
@@ -20,3 +21,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/builtin/lotus_scanner.html
+    - assets/builtin/egyptianlibrary.jsx
+    - assets/builtin/greeklibrary.jsx
+    - assets/builtin/norselibrary.jsx
+    - assets/builtin/celticlibrary.jsx
+    - assets/builtin/japaneselibrary.jsx
+    - assets/builtin/magicresearch.jsx
