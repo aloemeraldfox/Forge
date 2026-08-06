@@ -1,4 +1,4 @@
-name: forge
+name: lotus
 description: Load any HTML/JSX/web file and run it as a native app.
 version: 1.0.0+1
 

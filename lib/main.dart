@@ -33,7 +33,7 @@ class ForgeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Forge',
+      title: 'Lotus',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: _bg,
@@ -164,7 +164,7 @@ class _ForgeHomeState extends State<ForgeHome> {
 
   Future<void> _loadSavedApps() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList('forge_apps') ?? [];
+    final raw = prefs.getStringList('lotus_apps') ?? [];
     setState(() {
       _apps = raw
         .map((s) => LoadedApp.fromJson(jsonDecode(s)))
@@ -176,7 +176,7 @@ class _ForgeHomeState extends State<ForgeHome> {
   Future<void> _saveApps() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(
-      'forge_apps',
+      'lotus_apps',
       _apps.map((a) => jsonEncode(a.toJson())).toList(),
     );
   }
@@ -399,12 +399,12 @@ $src
               padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
               child: Row(
                 children: [
-                  const Text('🔥', style: TextStyle(fontSize: 28)),
+                  const Text('🪷', style: TextStyle(fontSize: 28)),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
-                      Text('FORGE',
+                      Text('LOTUS',
                         style: TextStyle(
                           color: _lotus,
                           fontSize: 18,
@@ -673,7 +673,7 @@ class _ForgeViewerState extends State<ForgeViewer> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Text('← FORGE',
+                    child: const Text('← LOTUS',
                       style: TextStyle(color: _lotus, fontSize: 11, letterSpacing: 2),
                     ),
                   ),
