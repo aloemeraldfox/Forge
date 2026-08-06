@@ -29,6 +29,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Write android/local.properties
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_HOME" >> android/local.properties
+
       - name: Patch flutter_inappwebview_android compileSdk to 34
         run: |
           find ~/.pub-cache -path "*/flutter_inappwebview_android*/android/build.gradle" | while read f; do
