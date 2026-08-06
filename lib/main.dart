@@ -257,11 +257,10 @@ class _ForgeHomeState extends State<ForgeHome> {
     try {
       final src = await rootBundle.loadString(def.assetPath);
 
-      // Strip 'export default' so the function becomes a global in Babel context
-      final cleaned = src.replaceFirst(
-        'export default function ${def.componentName}',
-        'function ${def.componentName}',
-      );
+      String cleaned = src
+        .replaceAll(RegExp(r"^import\s+.*?from\s+['\"].*?['\"];?\s*$", multiLine: true), '')
+        .replaceAll(RegExp(r"^import\s+['\"].*?['\"];?\s*$",             multiLine: true), '')
+        .replaceFirst('export default function ${def.componentName}', 'function ${def.componentName}');
 
       final html = _buildBuiltinHtml(cleaned, def.componentName);
 
@@ -295,7 +294,6 @@ class _ForgeHomeState extends State<ForgeHome> {
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script>
-// window.storage backed by localStorage for apps that use it
 window.storage = {
   get: function(key) {
     var v = localStorage.getItem(key);
@@ -311,6 +309,11 @@ window.storage = {
 <body>
 <div id="root"></div>
 <script type="text/babel">
+// React hooks available as globals — allows code that imported them to work
+const { useState, useEffect, useRef, useCallback, useMemo, useContext,
+        useReducer, useLayoutEffect, useId, createContext, Fragment,
+        forwardRef, memo, Children, cloneElement, createElement } = React;
+
 $jsxSrc
 
 const _mountRoot = ReactDOM.createRoot(document.getElementById('root'));
@@ -326,23 +329,37 @@ _mountRoot.render(<$componentName />);
     final src = await File(srcPath).readAsString();
     final docsDir = await getApplicationDocumentsDirectory();
 
-    // Detect component name from export default if not provided
+    // Strip all import/export-from statements — no bundler in browser context
+    String cleaned = src
+      .replaceAll(RegExp(r"^import\s+.*?from\s+['\"].*?['\"];?\s*$", multiLine: true), '')
+      .replaceAll(RegExp(r"^import\s+['\"].*?['\"];?\s*$",             multiLine: true), '')
+      .replaceAll(RegExp(r"^export\s+\{[^}]*\}\s*;?\s*$",             multiLine: true), '');
+
+    // Detect component name then strip the export default
     String mountComponent = componentName ?? 'App';
-    if (componentName == null) {
-      final match = RegExp(r'export default function (\w+)').firstMatch(src);
-      if (match != null) {
-        mountComponent = match.group(1)!;
-      }
+
+    // export default function Name
+    final m1 = RegExp(r'export\s+default\s+function\s+(\w+)').firstMatch(cleaned);
+    // export default class Name
+    final m2 = RegExp(r'export\s+default\s+class\s+(\w+)').firstMatch(cleaned);
+    // export default ArrowOrIdentifier
+    final m3 = RegExp(r'export\s+default\s+(\w+)').firstMatch(cleaned);
+
+    if (m1 != null) {
+      mountComponent = m1.group(1)!;
+      cleaned = cleaned.replaceFirst(m1.group(0)!, 'function $mountComponent');
+    } else if (m2 != null) {
+      mountComponent = m2.group(1)!;
+      cleaned = cleaned.replaceFirst(m2.group(0)!, 'class $mountComponent');
+    } else if (m3 != null) {
+      mountComponent = m3.group(1)!;
+      cleaned = cleaned.replaceFirst(m3.group(0)!, '');
     }
 
-    // Strip export default so it becomes a global
-    final cleaned = src.replaceFirst(
-      RegExp(r'export default function (\w+)'),
-      'function $mountComponent',
-    );
+    // Strip any remaining bare 'export' keywords on named declarations
+    cleaned = cleaned.replaceAll(RegExp(r'^export\s+(function|class|const|let|var)\s+', multiLine: true), r'$1 ');
 
     final wrapped = _buildBuiltinHtml(cleaned, mountComponent);
-
     final wrappedPath = '${docsDir.path}/forge_apps/${fileName}_wrapped.html';
     await File(wrappedPath).writeAsString(wrapped);
     return wrappedPath;
