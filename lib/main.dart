@@ -83,20 +83,26 @@ class LoadedApp {
 class BuiltinDef {
   final String name;
   final String assetPath;
-  final String componentName;
+  final String? componentName; // null = raw HTML asset, no JSX wrapping
   final Color color;
   final String glyph;
 
   const BuiltinDef({
     required this.name,
     required this.assetPath,
-    required this.componentName,
+    this.componentName,
     required this.color,
     required this.glyph,
   });
 }
 
 const _builtins = [
+  BuiltinDef(
+    name: 'Lotus Scanner',
+    assetPath: 'assets/builtin/lotus_scanner.html',
+    color: Color(0xFFC084F5),
+    glyph: '🪷',
+  ),
   BuiltinDef(
     name: 'Egyptian',
     assetPath: 'assets/builtin/egyptianlibrary.jsx',
@@ -257,17 +263,27 @@ class _ForgeHomeState extends State<ForgeHome> {
     try {
       final src = await rootBundle.loadString(def.assetPath);
 
-      String cleaned = src
-        .replaceAll(RegExp(r"^import\s+.*?from\s+['\"].*?['\"];?\s*$", multiLine: true), '')
-        .replaceAll(RegExp(r"^import\s+['\"].*?['\"];?\s*$",             multiLine: true), '')
-        .replaceFirst('export default function ${def.componentName}', 'function ${def.componentName}');
+      final String html;
+      final String cacheKey;
 
-      final html = _buildBuiltinHtml(cleaned, def.componentName);
+      if (def.componentName == null) {
+        // Raw HTML built-in — use the asset as-is, no JSX wrapping needed.
+        html = src;
+        cacheKey = def.name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+      } else {
+        // JSX built-in — strip imports and wrap with Babel/React runtime.
+        String cleaned = src
+          .replaceAll(RegExp(r"^import\s+.*?from\s+['\"].*?['\"];?\s*$", multiLine: true), '')
+          .replaceAll(RegExp(r"^import\s+['\"].*?['\"];?\s*$",             multiLine: true), '')
+          .replaceFirst('export default function ${def.componentName}', 'function ${def.componentName}');
+        html = _buildBuiltinHtml(cleaned, def.componentName!);
+        cacheKey = def.componentName!;
+      }
 
       final dir = await getApplicationDocumentsDirectory();
       final cacheDir = Directory('${dir.path}/forge_builtins');
       await cacheDir.create(recursive: true);
-      final path = '${cacheDir.path}/${def.componentName}.html';
+      final path = '${cacheDir.path}/$cacheKey.html';
       await File(path).writeAsString(html);
 
       setState(() => _loading = false);

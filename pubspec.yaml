@@ -22,6 +22,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/builtin/lotus_scanner.html
     - assets/builtin/egyptianlibrary.jsx
     - assets/builtin/greeklibrary.jsx
     - assets/builtin/norselibrary.jsx
