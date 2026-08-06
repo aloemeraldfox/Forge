@@ -188,9 +188,9 @@ class _ForgeHomeState extends State<ForgeHome> {
 
     try {
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['html', 'htm', 'jsx', 'tsx', 'js', 'vue', 'svelte'],
+        type: FileType.any,   // FileType.custom breaks JSX — no MIME type on Android
         allowMultiple: false,
+        withData: true,       // ensures bytes available for content:// URIs
       );
 
       if (result == null || result.files.isEmpty) {
@@ -199,14 +199,28 @@ class _ForgeHomeState extends State<ForgeHome> {
       }
 
       final file = result.files.single;
-      final srcPath = file.path!;
-      final ext = file.extension?.toLowerCase() ?? 'html';
+      final ext = (file.extension ?? file.name.split('.').last).toLowerCase();
+
+      const supported = {'html', 'htm', 'jsx', 'tsx', 'js', 'vue', 'svelte'};
+      if (!supported.contains(ext)) {
+        setState(() => _loading = false);
+        _showError('Unsupported type .$ext — load HTML, JSX, TSX, JS, Vue or Svelte');
+        return;
+      }
 
       final docsDir = await getApplicationDocumentsDirectory();
       final destDir = Directory('${docsDir.path}/forge_apps');
       await destDir.create(recursive: true);
       final destPath = '${destDir.path}/${file.name}';
-      await File(srcPath).copy(destPath);
+
+      // Use bytes when path is null (content:// URIs from Drive, Downloads, etc.)
+      if (file.path != null) {
+        await File(file.path!).copy(destPath);
+      } else if (file.bytes != null) {
+        await File(destPath).writeAsBytes(file.bytes!);
+      } else {
+        throw Exception('Could not read file — try copying it to local storage first');
+      }
 
       final finalPath = (ext == 'jsx' || ext == 'tsx')
           ? await _wrapJsx(destPath, file.name, null)
