@@ -309,6 +309,11 @@ class _ForgeHomeState extends State<ForgeHome> {
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;width:100%;height:100%;background:#06080d;overflow:hidden;}
+#root{width:100%;height:100%;}
+</style>
 <script>
 window.storage = {
   get: function(key) {
