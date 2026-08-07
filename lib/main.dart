@@ -273,8 +273,8 @@ class _ForgeHomeState extends State<ForgeHome> {
       } else {
         // JSX built-in — strip imports and wrap with Babel/React runtime.
         String cleaned = src
-          .replaceAll(RegExp(r"^import\s+.*?from\s+['\"].*?['\"];?\s*$", multiLine: true), '')
-          .replaceAll(RegExp(r"^import\s+['\"].*?['\"];?\s*$",             multiLine: true), '')
+          .replaceAll(RegExp("^import\\s+.*?from\\s+['\"].*?['\"];?\\s*\$", multiLine: true), '')
+          .replaceAll(RegExp("^import\\s+['\"].*?['\"];?\\s*\$",             multiLine: true), '')
           .replaceFirst('export default function ${def.componentName}', 'function ${def.componentName}');
         html = _buildBuiltinHtml(cleaned, def.componentName!);
         cacheKey = def.componentName!;
@@ -347,9 +347,9 @@ _mountRoot.render(<$componentName />);
 
     // Strip all import/export-from statements — no bundler in browser context
     String cleaned = src
-      .replaceAll(RegExp(r"^import\s+.*?from\s+['\"].*?['\"];?\s*$", multiLine: true), '')
-      .replaceAll(RegExp(r"^import\s+['\"].*?['\"];?\s*$",             multiLine: true), '')
-      .replaceAll(RegExp(r"^export\s+\{[^}]*\}\s*;?\s*$",             multiLine: true), '');
+      .replaceAll(RegExp("^import\\s+.*?from\\s+['\"].*?['\"];?\\s*\$", multiLine: true), '')
+      .replaceAll(RegExp("^import\\s+['\"].*?['\"];?\\s*\$",             multiLine: true), '')
+      .replaceAll(RegExp(r"^export\s+\{[^}]*\}\s*;?\s*$",              multiLine: true), '');
 
     // Detect component name then strip the export default
     String mountComponent = componentName ?? 'App';
